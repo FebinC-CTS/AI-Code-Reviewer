@@ -1,0 +1,136 @@
+# AI Code Review
+
+A full-stack AI-powered code review application built with FastAPI, React, and the Anthropic Claude API.
+
+Upload any codebase (or ZIP file) and receive a detailed analysis covering bugs, security vulnerabilities, performance issues, and best practice recommendations — with specific fixes for every finding.
+
+## Architecture
+
+```
+Browser (React/Vite :5173)
+        ↓ POST /api/v1/upload
+FastAPI (:8000)
+        ↓ asyncio background task
+  ├── FileProcessor    — ZIP extraction, file reading
+  ├── StaticAnalyzer   — ESLint · Stylelint · Bandit
+  └── AIAnalyzer       — Claude API (claude-opus-4-7)
+        ↓
+  Results stored in-memory → polled by frontend
+        ↓ GET /api/v1/export
+  ExportService → .xlsx or .md download
+```
+
+## Quick Start
+
+### 1. Get an Anthropic API Key
+
+Sign up at https://console.anthropic.com/ and create an API key.
+
+### 2. Backend Setup
+
+```bash
+cd ai-code-review/backend
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate it
+# macOS/Linux:
+source .venv/bin/activate
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# Windows (CMD):
+.venv\Scripts\activate.bat
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Open .env and set: ANTHROPIC_API_KEY=sk-ant-...
+
+# Start the server
+uvicorn app.main:app --reload --port 8000
+```
+
+The API will be running at http://localhost:8000  
+Interactive docs: http://localhost:8000/docs
+
+### 3. Frontend Setup
+
+Open a new terminal:
+
+```bash
+cd ai-code-review/frontend
+
+npm install
+npm run dev
+```
+
+The app will be running at http://localhost:5173
+
+### 4. Usage
+
+1. Open http://localhost:5173 in your browser
+2. Drag & drop code files or a ZIP archive onto the upload area
+3. Click **Analyze Code**
+4. Watch real-time progress as files are processed
+5. Browse issues in the sortable, filterable results table
+6. Export findings as **Excel** or **Markdown**
+
+## Supported File Types
+
+| Language | Extensions |
+|----------|-----------|
+| JavaScript | `.js` `.jsx` |
+| TypeScript | `.ts` `.tsx` |
+| CSS | `.css` `.scss` `.sass` |
+| HTML | `.html` |
+| JSON | `.json` |
+| Python | `.py` |
+| Java | `.java` |
+| Archives | `.zip` |
+
+## Static Analysis (Optional)
+
+For enhanced analysis, install these tools:
+
+**JavaScript/TypeScript (ESLint):**
+```bash
+npm install -g eslint
+```
+
+**CSS (Stylelint):**
+```bash
+npm install -g stylelint stylelint-config-standard
+```
+
+**Python (Bandit):**
+```bash
+pip install bandit
+```
+
+These tools run automatically when available. The app works without them (AI-only analysis).
+
+## Configuration
+
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `ANTHROPIC_API_KEY` | **Required.** Your Anthropic API key | — |
+| `ALLOWED_ORIGINS` | CORS allowed origins | `http://localhost:5173,http://localhost:3000` |
+| `LOG_LEVEL` | Logging verbosity | `INFO` |
+
+## Issue Severity Levels
+
+| Level | Description |
+|-------|-------------|
+| 🔴 High | Security vulnerabilities, crashes, data loss risks |
+| 🟡 Medium | Logic bugs, performance issues, bad practices |
+| 🟢 Low | Style issues, minor improvements, documentation |
+
+## Limits
+
+- Max upload size: **100 MB**
+- Max files per upload: **50**
+- Files exceeding 150,000 characters are truncated with a warning
+- Excluded directories: `node_modules`, `.git`, `dist`, `build`, `.next`
