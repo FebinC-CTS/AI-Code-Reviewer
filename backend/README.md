@@ -17,12 +17,22 @@ FastAPI backend that processes uploaded code files and runs AI + static analysis
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and set ANTHROPIC_API_KEY
 uvicorn app.main:app --reload --port 8000
+```
+
+> **Tip:** On Windows, if `uvicorn` isn't on your PATH, run it as a module:
+> `python -m uvicorn app.main:app --reload --port 8000`.
+
+**Recommended:** use a virtual environment so dependencies stay isolated from
+your global Python (delete `.venv` to remove everything). Run this *before*
+`pip install`:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 ```
 
 ## Environment Variables

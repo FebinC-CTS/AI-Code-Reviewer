@@ -31,17 +31,6 @@ Sign up at https://console.anthropic.com/ and create an API key.
 ```bash
 cd ai-code-review/backend
 
-# Create virtual environment
-python -m venv .venv
-
-# Activate it
-# macOS/Linux:
-source .venv/bin/activate
-# Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# Windows (CMD):
-.venv\Scripts\activate.bat
-
 # Install dependencies
 pip install -r requirements.txt
 
@@ -55,6 +44,32 @@ uvicorn app.main:app --reload --port 8000
 
 The API will be running at http://localhost:8000  
 Interactive docs: http://localhost:8000/docs
+
+> **Tip:** On Windows, if `uvicorn` isn't on your PATH, run it as a module:
+> `python -m uvicorn app.main:app --reload --port 8000` (and `python -m pip install ...`).
+
+#### Recommended: use a virtual environment
+
+The two commands above work, but they install packages into your global
+Python. A virtual environment isolates this project's dependencies so they
+can't conflict with other projects, and you can remove everything by simply
+deleting the `.venv` folder. It takes a few seconds:
+
+```bash
+# Create the virtual environment
+python -m venv .venv
+
+# Activate it
+# macOS/Linux:
+source .venv/bin/activate
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# Windows (CMD):
+.venv\Scripts\activate.bat
+```
+
+Run this **before** `pip install`, then continue with the steps above. While
+the venv is active, `pip` and `uvicorn` are always on your PATH.
 
 ### 3. Frontend Setup
 
