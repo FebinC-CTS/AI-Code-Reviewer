@@ -33,6 +33,17 @@ export function getExportUrl(sessionId, format) {
   return `${BASE_URL}/export/${sessionId}/${format}`
 }
 
+// Ask the assistant a question about the reviewed codebase.
+// history: [{ role: 'user' | 'assistant', content }]
+export async function sendChat(sessionId, message, history = []) {
+  const response = await api.post(
+    `/chat/${sessionId}`,
+    { message, history },
+    { timeout: 120000 },
+  )
+  return response.data // { session_id, answer }
+}
+
 export async function deleteSession(sessionId) {
   const response = await api.delete(`/session/${sessionId}`)
   return response.data

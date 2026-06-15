@@ -52,3 +52,13 @@ class FileInfo(BaseModel):
     extension: str
     content: Optional[str] = None
     truncated: bool = False
+
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., description="The user's question about the codebase")
+    history: List[ChatMessage] = Field(default_factory=list, description="Prior turns for context")

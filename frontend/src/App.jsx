@@ -4,6 +4,7 @@ import FileUpload from './components/FileUpload'
 import ProgressBar from './components/ProgressBar'
 import ResultsTable from './components/ResultsTable'
 import ExportButtons from './components/ExportButtons'
+import ChatPanel from './components/ChatPanel'
 import { uploadFiles, pollUntilDone } from './services/api'
 
 export default function App() {
@@ -146,6 +147,9 @@ export default function App() {
             ) : (
               <ResultsTable issues={results.issues} />
             )}
+
+            {/* Ask-the-code assistant — available once a review is complete */}
+            <ChatPanel sessionId={sessionId} issues={results.issues || []} />
           </>
         )}
       </main>

@@ -15,9 +15,11 @@ FastAPI (:8000)
   ├── StaticAnalyzer   — ESLint · Stylelint · Bandit
   └── AIAnalyzer       — Claude API (claude-opus-4-7)
         ↓
-  Results stored in-memory → polled by frontend
+  Results + source stored in-memory → polled by frontend
         ↓ GET /api/v1/export
   ExportService → .xlsx or .md download
+        ↓ POST /api/v1/chat/{session_id}
+  ChatService → grounded Q&A over the reviewed code + issues
 ```
 
 ## Quick Start
@@ -92,6 +94,16 @@ The app will be running at http://localhost:5173
 4. Watch real-time progress as files are processed
 5. Browse issues in the sortable, filterable results table
 6. Export findings as **Excel** or **Markdown**
+7. **Ask the AI assistant** about your code via the floating chat button in the bottom-right corner — it has read every uploaded file and the full review. Use a suggested question or type your own ("Are there security vulnerabilities?", "How do I fix the issue in X?", "Which file is riskiest?").
+
+## AI Chat Assistant
+
+After a review completes, a floating chat button appears in the bottom-right corner (so it's reachable without scrolling past the issues). Opening it reveals a popover that lets you interrogate the codebase in natural language. It is grounded: the backend rebuilds context from the **actual uploaded source** plus the **issues found**, so answers cite real files and fixes rather than guessing.
+
+- **Endpoint:** `POST /api/v1/chat/{session_id}` with `{ "message": "...", "history": [...] }`
+- **Scenario-aware prompts:** the panel suggests starter questions derived from the review (e.g. the count of high-severity issues, the file with the most findings).
+- **Multi-provider:** uses the same `LLM_PROVIDER` configuration as the analyzer (Anthropic / Ollama / OpenAI-compatible / Gemini).
+- Short conversation memory is kept per session; the source is cached so it survives instant cache-hit re-uploads.
 
 ## Supported File Types
 

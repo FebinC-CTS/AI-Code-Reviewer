@@ -9,11 +9,12 @@ from fastapi.responses import Response, StreamingResponse
 import aiofiles
 import tempfile
 
-from app.models.schemas import ReviewIssue, AnalysisResponse, SeverityLevel
+from app.models.schemas import ReviewIssue, AnalysisResponse, SeverityLevel, ChatRequest
 from app.services.file_processor import FileProcessor
 from app.services.ai_analyzer import AIAnalyzer
 from app.services.static_analyzer import StaticAnalyzer
 from app.services.export_service import ExportService
+from app.services.chat_service import answer_question
 from app.utils.helpers import compute_session_id, compute_files_hash, is_allowed_extension
 
 logger = logging.getLogger(__name__)
@@ -120,15 +121,23 @@ async def upload_files(
 
     # ── Cache check: same file contents → return instantly ──────────────────
     files_hash = compute_files_hash(file_data)
-    cached_issues = _load_cache(files_hash)
-    if cached_issues is not None:
+    cached = _load_cache(files_hash)
+    if cached is not None:
+        # New cache format is a dict {issues, files}; legacy format is a bare list.
+        if isinstance(cached, dict):
+            cached_issues = cached.get("issues", [])
+            cached_files = cached.get("files", [])
+        else:
+            cached_issues = cached
+            cached_files = []
         logger.info("Cache hit for hash %s — skipping AI analysis.", files_hash)
         _sessions[session_id] = {
             "status": "complete",
             "progress": {"total": len(file_data), "processed": len(file_data), "current": ""},
             "issues": cached_issues,
+            "files": cached_files,
             "errors": [],
-            "file_count": len(file_data),
+            "file_count": len(cached_files) if cached_files else len(file_data),
             "cached": True,
         }
         return {"session_id": session_id, "status": "cached", "message": "Loaded from cache."}
@@ -137,6 +146,7 @@ async def upload_files(
         "status": "uploading",
         "progress": {"total": 0, "processed": 0, "current": ""},
         "issues": [],
+        "files": [],
         "errors": [],
         "file_count": 0,
         "cached": False,
@@ -184,6 +194,35 @@ async def get_results(session_id: str):
         "file_count": session["file_count"],
         "errors": session["errors"],
     }
+
+
+@router.post("/chat/{session_id}")
+async def chat(session_id: str, body: ChatRequest):
+    """Answer a developer's question about the reviewed codebase."""
+    session = _sessions.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if session["status"] not in ("complete", "error"):
+        raise HTTPException(status_code=202, detail="Analysis still in progress.")
+
+    question = (body.message or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Message is required.")
+
+    _check_gateway_config()
+
+    try:
+        answer = await answer_question(
+            question=question,
+            history=[m.model_dump() for m in body.history],
+            files=session.get("files", []),
+            issues=session.get("issues", []),
+        )
+    except Exception as e:
+        logger.exception("Chat failed for session %s: %s", session_id, e)
+        raise HTTPException(status_code=500, detail=f"Chat failed: {e}")
+
+    return {"session_id": session_id, "answer": answer}
 
 
 @router.get("/export/{session_id}/{format}")
@@ -281,6 +320,12 @@ async def _run_analysis(session_id: str, file_data: List[tuple]):
         # Load file contents
         file_infos = processor.load_file_contents(temp_dir, all_relative_paths)
 
+        # Keep the source available for the post-review chat assistant.
+        session["files"] = [
+            {"path": f.path, "content": f.content or "", "truncated": f.truncated}
+            for f in file_infos
+        ]
+
         # Static analysis
         session["status"] = "static_analysis"
         static_analyzer = StaticAnalyzer()
@@ -316,7 +361,7 @@ async def _run_analysis(session_id: str, file_data: List[tuple]):
         # Save to disk cache so identical uploads return instantly next time
         files_hash = session.get("_files_hash")
         if files_hash:
-            _save_cache(files_hash, serialized)
+            _save_cache(files_hash, {"issues": serialized, "files": session.get("files", [])})
 
     except Exception as e:
         logger.exception("Analysis failed for session %s: %s", session_id, e)
