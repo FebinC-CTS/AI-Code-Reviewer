@@ -27,10 +27,14 @@ _sessions: Dict[str, Dict[str, Any]] = {}
 _CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".cache")
 os.makedirs(_CACHE_DIR, exist_ok=True)
 
+# Keep only the N most recently written cache entries so the directory can't
+# grow without bound (each entry holds a review's issues + source).
+_MAX_CACHE_ENTRIES = 50
+
 def _cache_path(files_hash: str) -> str:
     return os.path.join(_CACHE_DIR, f"{files_hash}.json")
 
-def _load_cache(files_hash: str) -> list | None:
+def _load_cache(files_hash: str):
     path = _cache_path(files_hash)
     if os.path.exists(path):
         try:
@@ -40,11 +44,32 @@ def _load_cache(files_hash: str) -> list | None:
             logger.warning("Cache read failed for %s: %s", files_hash, e)
     return None
 
-def _save_cache(files_hash: str, issues: list) -> None:
+def _prune_cache(max_entries: int = _MAX_CACHE_ENTRIES) -> None:
+    """Delete the oldest cache files so at most `max_entries` remain."""
+    try:
+        entries = [
+            os.path.join(_CACHE_DIR, f)
+            for f in os.listdir(_CACHE_DIR)
+            if f.endswith(".json")
+        ]
+        if len(entries) <= max_entries:
+            return
+        entries.sort(key=os.path.getmtime)  # oldest first
+        for old in entries[: len(entries) - max_entries]:
+            try:
+                os.remove(old)
+                logger.info("Pruned old cache entry: %s", os.path.basename(old))
+            except OSError:
+                pass
+    except Exception as e:
+        logger.warning("Cache prune failed: %s", e)
+
+def _save_cache(files_hash: str, payload) -> None:
     try:
         with open(_cache_path(files_hash), "w", encoding="utf-8") as f:
-            json.dump(issues, f)
+            json.dump(payload, f)
         logger.info("Results cached: %s", files_hash)
+        _prune_cache()
     except Exception as e:
         logger.warning("Cache write failed: %s", e)
 

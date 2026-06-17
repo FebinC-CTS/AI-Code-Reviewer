@@ -5,3 +5,9 @@ dist
 .env
 **/.env
 *.local
+
+# Runtime analysis cache — regenerated on demand, never committed
+.cache
+**/.cache
+__pycache__
+**/__pycache__

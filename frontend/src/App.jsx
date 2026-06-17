@@ -117,21 +117,6 @@ export default function App() {
         {/* Results */}
         {phase === 'done' && results && (
           <>
-            {status?.cached && (
-              <div style={{
-                maxWidth: 680, margin: '0 auto 1rem',
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.6rem 1rem',
-                background: 'var(--low-bg)',
-                border: '1px solid var(--low-border)',
-                borderRadius: 'var(--radius)',
-                fontSize: '13px',
-                color: 'var(--low)',
-              }}>
-                <span style={{ fontSize: '15px' }}>⚡</span>
-                <span><strong>Instant result</strong> — loaded from cache (same files detected)</span>
-              </div>
-            )}
             <ExportButtons sessionId={sessionId} onReset={reset} />
             {results.issues?.length === 0 ? (
               <div className="card" style={{ marginTop: '1rem', textAlign: 'center', padding: '3rem' }}>
